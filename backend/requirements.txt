@@ -45,9 +45,10 @@ js-regex==1.0.1
 
 # ML/AI
 scikit-learn==1.4.0
-tensorflow==2.15.0
+scipy==1.12.0
 numpy==1.26.3
 pandas==2.2.0
+joblib==1.3.2
 
 # Utilities
 python-dotenv==1.0.1
