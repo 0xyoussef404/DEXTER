@@ -1,3 +1,198 @@
-# DEXTER
+# BugHunterX - DEXTER
 
-Security automation and vulnerability analysis toolkit.
+Enterprise-grade Web Application Security Testing Platform for authorized bug bounty hunting and penetration testing.
+
+## Overview
+
+BugHunterX is a comprehensive security testing platform featuring:
+- **Multi-tier Architecture**: Web Dashboard + CLI + REST API + WebSocket + Distributed Workers + AI/ML
+- **Phase 1: Reconnaissance Engine** - 15+ subdomain sources, DNS analysis, port scanning, tech detection, JS analysis
+- **Phase 2: Vulnerability Assessment** - XSS, SQLi, SSRF, advanced fuzzing with ML-based false positive filtering
+- **Distributed Scanning**: Celery-based task queue with RabbitMQ
+- **Real-time Updates**: WebSocket support for live scan progress
+- **AI/ML Integration**: False positive reduction and adaptive fuzzing
+
+## Tech Stack
+
+### Backend
+- **Framework**: FastAPI (Python 3.11+)
+- **Task Queue**: Celery + RabbitMQ
+- **Databases**: PostgreSQL (main), MongoDB (logs), Redis (cache), Elasticsearch (analytics)
+- **Monitoring**: Flower (Celery monitoring)
+
+### Frontend
+- **Framework**: Next.js 14 + React 18 + TypeScript
+- **UI**: TailwindCSS + shadcn/ui
+- **Visualizations**: Recharts + D3.js
+- **Editor**: Monaco Editor + Xterm.js
+
+### Infrastructure
+- **Containerization**: Docker + Docker Compose
+- **Orchestration**: Optional Kubernetes support
+
+## Quick Start
+
+### Prerequisites
+- Docker and Docker Compose
+- Git
+- 8GB+ RAM recommended
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/0xyoussef404/DEXTER.git
+cd DEXTER
+```
+
+2. Start the services:
+```bash
+docker-compose up -d
+```
+
+3. Access the services:
+- Backend API: http://localhost:8000
+- API Documentation: http://localhost:8000/api/docs
+- Flower (Celery): http://localhost:5555
+- Frontend: http://localhost:3000
+
+## Project Structure
+
+```
+DEXTER/
+├── backend/              # FastAPI backend
+│   ├── app/
+│   │   ├── api/         # API endpoints
+│   │   ├── core/        # Core configuration
+│   │   ├── db/          # Database connections
+│   │   ├── models/      # SQLAlchemy models
+│   │   ├── schemas/     # Pydantic schemas
+│   │   ├── services/    # Business logic
+│   │   │   ├── recon/   # Reconnaissance services
+│   │   │   ├── vuln/    # Vulnerability services
+│   │   │   └── ml/      # Machine learning services
+│   │   ├── tasks/       # Celery tasks
+│   │   └── main.py      # Application entry point
+│   ├── Dockerfile
+│   └── requirements.txt
+├── frontend/            # Next.js frontend
+├── workers/             # Celery workers
+├── database/            # Database migrations
+├── docker/              # Docker configurations
+├── scripts/             # Utility scripts
+├── docs/                # Documentation
+└── docker-compose.yml   # Docker services
+
+## Features
+
+### Phase 1: Reconnaissance Engine ✅ (Structure Complete)
+
+- **Subdomain Enumeration** (15+ sources)
+  - Passive: crt.sh, Censys, VirusTotal, SecurityTrails, Shodan, etc.
+  - Active: DNS bruteforce, permutations, zone transfer
+  - Subdomain takeover detection (40+ providers)
+  
+- **DNS Analysis**
+  - All record types (A, AAAA, CNAME, MX, TXT, NS, SOA, CAA)
+  - CDN/WAF detection
+  - Origin IP discovery
+  
+- **Port Scanning & Service Detection**
+  - Nmap, Masscan, RustScan integration
+  - Service version detection
+  - SSL/TLS analysis
+  
+- **Technology Stack Detection**
+  - CMS detection (WordPress, Joomla, Drupal)
+  - Framework detection
+  - WAF detection (50+ signatures)
+  
+- **Deep Web Crawling**
+  - JavaScript rendering
+  - Form and parameter extraction
+  
+- **JavaScript Analysis** (CRITICAL)
+  - API endpoint extraction
+  - Secret detection (50+ patterns)
+  - Source map analysis
+  
+- **Content & Directory Discovery**
+  - Multi-tier wordlist strategy
+  - Sensitive file detection
+  
+- **API Discovery**
+  - Swagger/OpenAPI parsing
+  - GraphQL introspection
+  
+- **Parameter Discovery**
+  - Hidden parameter detection
+  - Archive mining
+
+### Phase 2: Vulnerability Assessment ✅ (Structure Complete)
+
+- **XSS Detection**
+  - Multi-context detection
+  - WAF bypass techniques
+  - DOM XSS detection
+  - Blind XSS infrastructure
+  
+- **SQL Injection**
+  - Multi-technique detection
+  - NoSQL injection
+  - Statistical verification
+  
+- **SSRF Detection**
+  - Cloud metadata targeting
+  - Blind SSRF detection
+  
+- **Advanced Fuzzing**
+  - Baseline establishment
+  - ML-based false positive filtering
+  - Mutation engine
+  - Race condition detection
+
+## Development Status
+
+✅ **Completed**:
+- Project architecture and structure
+- Docker infrastructure setup
+- Database models and schemas
+- API endpoint structure
+- Celery task orchestration
+- Service layer architecture
+
+🚧 **In Progress**:
+- Tool integrations (Subfinder, Amass, Nmap, SQLMap, etc.)
+- Frontend development
+- Authentication and authorization
+- ML model training
+
+📋 **Planned**:
+- CLI tool development
+- Report generation
+- WebSocket real-time updates
+- Kubernetes deployment
+- Full test coverage
+
+## Security Notice
+
+⚠️ **IMPORTANT**: BugHunterX is designed for **authorized security testing only**. 
+
+- Only use on systems you own or have explicit permission to test
+- Unauthorized security testing is illegal and unethical
+- Users are responsible for compliance with all applicable laws
+- This tool is for educational and professional security testing purposes
+
+## License
+
+[License information to be added]
+
+## Contributing
+
+Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+
+## Contact
+
+For questions or support, please open an issue on GitHub.
+```
+
