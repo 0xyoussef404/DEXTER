@@ -1,0 +1,191 @@
+version: '3.8'
+
+services:
+  # PostgreSQL - Main Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: bughunterx-postgres
+    environment:
+      POSTGRES_USER: bughunterx
+      POSTGRES_PASSWORD: bughunterx_secure_pass
+      POSTGRES_DB: bughunterx
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bughunterx"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB - Logs & Raw Data
+  mongo:
+    image: mongo:7
+    container_name: bughunterx-mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: bughunterx
+      MONGO_INITDB_ROOT_PASSWORD: bughunterx_secure_pass
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis - Cache, Queue & PubSub
+  redis:
+    image: redis:7-alpine
+    container_name: bughunterx-redis
+    command: redis-server --appendonly yes --requirepass bughunterx_secure_pass
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Elasticsearch - Search & Analytics
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: bughunterx-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # RabbitMQ - Message Queue
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: bughunterx-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: bughunterx
+      RABBITMQ_DEFAULT_PASS: bughunterx_secure_pass
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bughunterx-backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://bughunterx:bughunterx_secure_pass@postgres:5432/bughunterx
+      - MONGO_URL=mongodb://bughunterx:bughunterx_secure_pass@mongo:27017/
+      - REDIS_URL=redis://:bughunterx_secure_pass@redis:6379/0
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - RABBITMQ_URL=amqp://bughunterx:bughunterx_secure_pass@rabbitmq:5672/
+      - CELERY_BROKER_URL=amqp://bughunterx:bughunterx_secure_pass@rabbitmq:5672/
+      - CELERY_RESULT_BACKEND=redis://:bughunterx_secure_pass@redis:6379/1
+    volumes:
+      - ./backend:/app
+      - /var/run/docker.sock:/var/run/docker.sock  # For running security tools in containers
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bughunterx-celery-worker
+    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      - DATABASE_URL=postgresql://bughunterx:bughunterx_secure_pass@postgres:5432/bughunterx
+      - MONGO_URL=mongodb://bughunterx:bughunterx_secure_pass@mongo:27017/
+      - REDIS_URL=redis://:bughunterx_secure_pass@redis:6379/0
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - RABBITMQ_URL=amqp://bughunterx:bughunterx_secure_pass@rabbitmq:5672/
+      - CELERY_BROKER_URL=amqp://bughunterx:bughunterx_secure_pass@rabbitmq:5672/
+      - CELERY_RESULT_BACKEND=redis://:bughunterx_secure_pass@redis:6379/1
+    volumes:
+      - ./backend:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - backend
+      - rabbitmq
+      - redis
+    restart: unless-stopped
+
+  # Flower - Celery Monitoring
+  flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bughunterx-flower
+    command: celery -A app.tasks.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=amqp://bughunterx:bughunterx_secure_pass@rabbitmq:5672/
+      - CELERY_RESULT_BACKEND=redis://:bughunterx_secure_pass@redis:6379/1
+    depends_on:
+      - rabbitmq
+      - redis
+      - celery-worker
+    restart: unless-stopped
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bughunterx-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  mongo_data:
+  redis_data:
+  elasticsearch_data:
+  rabbitmq_data:
